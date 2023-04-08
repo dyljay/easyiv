@@ -182,21 +182,14 @@ void loop() {
       state = 1;
 
     case 1:
-
-      while (range_2_reading > 1.0) 
+      
+      if (v2.isRangeComplete()) // do i need to check if it is complete every time? (I should just check if the switches have been hit to know that I've hit the end, don't need to use this)
       {
-        if (v2.isRangeComplete()) // do i need to check if it is complete every time? (I should just check if the switches have been hit to know that I've hit the end, don't need to use this)
-        {
-          range_2_reading = v2.readRange();
-        }
-
-
+        range_2_reading = v2.readRange();
       }
 
-      while (range_2_reading < 0) // go back and just make this so it will stop until it hits the switch to stop.
-      {
 
-      }
+
 
       delay(50);
     case 2:
