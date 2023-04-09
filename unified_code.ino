@@ -1,7 +1,10 @@
 // create servo object to control a servo
 #include <Servo.h>
 #include <Adafruit_VL6180X.h>
-#include <Adafruit_VL53L0X.h>
+#include <AccelStepper.h>
+
+// definitions
+#define motorInterfaceType 1
 
 /*
 ==================================================================================================================
@@ -24,7 +27,7 @@ z: distance from the rail to the arm
 // STATE DEFINITIONS //
 
 /*
-state 1: moving the linear slide up and down
+state 1: moving the linear slide up and down to perform initial scan
 state 2: moving the linear slide into its x position
 state 3: rotating the first servo into the y position
 state 4: moving the linear actuator into position
@@ -40,10 +43,12 @@ state 6: moving the linear slide, actuator, and servo motor while inserting the 
 */
 
 // the depth of the vein from the surface of the skin (determined by the ultrasound image and length/pixel approximations)
-int h_us = 2;
+int h_us = 10;
 
 // placeholder final coordinates (these points theoretically determined w the ultrasound and the hypothetical comp vis model)
 int xf, yf, zf = 1;
+
+float l3 = 1.00;
 
 /*
 ==================================================================================================================
@@ -51,7 +56,7 @@ int xf, yf, zf = 1;
 ==================================================================================================================
 */
 
-// MOTORS //
+////////////// MOTORS //////////////
 
 // current state of the robot
 int state = 0;
@@ -60,38 +65,47 @@ int state = 0;
 int x, y, z;
 
 // setting the pins for the linear actuator
-const int forward = 8;
-const int backward = 9;
+const int forward = 38;
+const int backward = 39;
 
 // creating objects to move servo motors
 Servo myservo;
 Servo myservo1;
 
-int servo_1_pin = 2;
-int servo_2_pin = 3;
+const int servo_1_pin = 30;
+const int servo_2_pin = 31;
 
-// creating the pins for the linear slide
-int pin1;
-int pin2;
-int pin3;
-int pin4;
+// creating variables for the linear slide
+const int dirPin = 22;
+const int stepPin = 23;
 
+AccelStepper myStepper(motorInterfaceType, stepPin, dirPin);
 
-// SENSORS //
+////////////// SENSORS //////////////
 
 //vl6180x (shorter range on linear actuator)
 Adafruit_VL6180X v1 = Adafruit_VL6180X();
 
-//vl5380x (on linear slide for longer distances)
-Adafruit_VL53L0X v2 = Adafruit_VL53L0X();
-Adafruit_VL53L0X v3 = Adafruit_VL53L0X();
+// Limit switches
+const int first_switch = 46;
+const int sec_switch = 47;
 
-
-// OTHER VARIABLES //
+///////////////// MISC. ///////////////////
 
 // Reading of sensor on linear slide to determine how close it is to the further end
 float range_2_reading;
 float length_from_end;
+
+/*
+==================================================================================================================
+-----------------------------------------------CALCULATIONS-------------------------------------------------------
+==================================================================================================================
+*/
+
+float l1 = 1.0;
+float l2 = 1.0;
+float q1 = 1.0;
+float q2 = 1.0;
 
 /*
 ==================================================================================================================
@@ -112,8 +126,8 @@ void stopLA() {
   @arg int forward: boolean on wither you want it to move forward
   @return: nothing
 */
-void moveLinearAct(bool forward) {
-  if (forward == true) 
+void moveLinearAct(bool forwards) {
+  if (forwards == true) 
   {
     digitalWrite(forward, HIGH);
     digitalWrite(backward, LOW);
@@ -125,10 +139,6 @@ void moveLinearAct(bool forward) {
   }
 }
 
-void moveLinearSlide(int dir, int pul) {
-
-}
-
 /*
 ==================================================================================================================
 ------------------------------------------------SETUP-------------------------------------------------------------
@@ -136,29 +146,42 @@ void moveLinearSlide(int dir, int pul) {
 */
 
 void setup() {
+  
+  //////////////////////////// SETTING PINS ////////////////////////////
+
   // The servo control wire is connected to Arduino D2 pin.
   myservo.attach(servo_1_pin);
 
   // Second servo motor connected to pin 3
   myservo1.attach(servo_2_pin);
-
-  // Set both motors to their neutral positions
-  myservo.write(90);
-  myservo1.write(0);
   
   // setting pins associated with the actuator
-  pinMode(forward, OUTPUT);//set relay as an output
-  pinMode(backward, OUTPUT);//set relay as an output
+  pinMode(forward, OUTPUT); //set relay as an output
+  pinMode(backward, OUTPUT); //set relay as an output
 
-  // setting the pins for the linear slide
-  
+  // establishing settings for stepper
+	pinMode(dirPin, OUTPUT);
+  pinMode(stepPin, OUTPUT);
+  digitalWrite(dirPin, LOW);
 
   // pins for further range ToF sensors
   // vl61
   v1.begin();
-  // vl53's (x2)
-  v2.startRangeContinuous();
-  v3.startRangeContinuous();
+
+  // pins for the buttons
+  pinMode(first_switch, INPUT);
+  pinMode(sec_switch, INPUT);
+  digitalWrite(dirPin, HIGH);
+
+  // Setting up pins for the 
+  pinMode(first_switch, INPUT);
+  pinMode(sec_switch, INPUT);
+
+  //////////////////// SETTING EVERYTHING TO NEUTRAL POSITIONS ////////////////////
+  
+  // Set both motors to their neutral positions
+  myservo.write(90);
+  myservo1.write(0); 
 }
 
 /*
@@ -171,36 +194,59 @@ void loop() {
   switch (state) 
   {
     case 0:
-      VL53L0X_RangingMeasurementData_t measure;
+      // needs rising edge trigger, so these three lines will cause one turn
+      digitalWrite(stepPin, LOW);
+      digitalWrite(stepPin, HIGH);
+      delayMicroseconds(60);
 
-      if (v2.isRangeComplete()) 
+      // checks if limit switch has been pressed
+      if (digitalRead(first_switch) == HIGH) 
       {
-        range_2_reading = v2.readRange();
-        length_from_end = v2.readRange();
+        state = 1;
+        digitalWrite(dirPin, HIGH); // flips the direction of slide and switches state to 1
       }
-
-      state = 1;
 
     case 1:
-      
-      if (v2.isRangeComplete()) // do i need to check if it is complete every time? (I should just check if the switches have been hit to know that I've hit the end, don't need to use this)
+
+      digitalWrite(stepPin, LOW);
+      digitalWrite(stepPin, HIGH);
+      delayMicroseconds(60);
+
+      if (digitalRead(sec_switch) == HIGH) // !!!!!! CHANGE THIS TO SECOND SWITCH AFTER YOU GET THE WIRES YOU NEED FOR IT !!!!!!! //
       {
-        range_2_reading = v2.readRange();
+        state = 2;
       }
 
-
-
-
-      delay(50);
-    case 2:
-      break;
+    case 2: // still need to think about how I am going to get the distance along the slide (use the vl53 or calculate the distance per signal/loop to get distance)
+      state = 3; // UPDATE THIS LATER!
     case 3:
-      break;
+      
+      myservo.write(q1);
+
     case 4:
-      break;
+
+      if (v1.isRangeComplete()) 
+      {
+        if (v1.readRangeResult() > h_us) 
+        {
+          moveLinearAct(true);
+        }
+
+        while (v1.readRangeResult() > h_us) 
+        {
+          delay(10);
+        }
+
+        stopLA();
+
+        state = 5;
+      }
+
     case 5:
-      break;
-    case 6:
+
+      myservo1.write(q2);
+
+    case 6: // you need to beter define this!
       break;
   }
 }
