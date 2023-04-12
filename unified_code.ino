@@ -2,6 +2,7 @@
 #include <Servo.h>
 #include <Adafruit_VL6180X.h>
 #include <AccelStepper.h>
+#include <ezButton.h>
 
 // definitions
 #define motorInterfaceType 1
@@ -48,7 +49,14 @@ int h_us = 10;
 // placeholder final coordinates (these points theoretically determined w the ultrasound and the hypothetical comp vis model)
 int xf, yf, zf = 1;
 
+// length of the needle
 float l3 = 1.00;
+
+// distance (mm) per 1 rotation of the slide
+int dist_slide = 8;
+
+// steps per revolution
+int steps = 400;
 
 /*
 ==================================================================================================================
@@ -76,10 +84,15 @@ const int servo_1_pin = 30;
 const int servo_2_pin = 31;
 
 // creating variables for the linear slide
-const int dirPin = 22;
-const int stepPin = 23;
+const int dirPin = 8;
+const int stepPin = 9;
 
-AccelStepper myStepper(motorInterfaceType, stepPin, dirPin);
+AccelStepper stepper(motorInterfaceType, stepPin, dirPin);
+
+// conversion ratio from turns to distance
+// 400 steps = 1 revolution = 8 mm
+float conversion_turns_to_mm = 400. / 8.;
+float conversion_mm_to_turns = 8. / 400.;
 
 ////////////// SENSORS //////////////
 
@@ -87,15 +100,24 @@ AccelStepper myStepper(motorInterfaceType, stepPin, dirPin);
 Adafruit_VL6180X v1 = Adafruit_VL6180X();
 
 // Limit switches
-const int first_switch = 46;
-const int sec_switch = 47;
+ezButton but1(24); // first switch to pin 24
+ezButton but2(25); // second switch to pin 25
 
 ///////////////// MISC. ///////////////////
 
-// Reading of sensor on linear slide to determine how close it is to the further end
-float range_2_reading;
-float length_from_end;
+// variables to keep track of the number of steps the motor takes from one end of the slide to the other
+int pos_end1 = 0;
+int pos_end2 = 0;
 
+// variable to read the serial to determine movement
+int incomingByte;
+
+// logic variables to not let the user go move the slide in both directions simultaneously so nothing is broken lol
+bool left = false;
+bool right = false;
+
+bool up = false;
+bool down = false;
 /*
 ==================================================================================================================
 -----------------------------------------------CALCULATIONS-------------------------------------------------------
@@ -112,6 +134,10 @@ float q2 = 1.0;
 ---------------------------------------------CUSTOM FUNCTIONS-----------------------------------------------------
 ==================================================================================================================
 */
+
+int calc_turns(float length) {
+  return pos_end1 - (length * conversion_turns_to_mm);
+}
 
 /*!
   @brief: Deactivate both relays to brake the motor
@@ -146,9 +172,8 @@ void moveLinearAct(bool forwards) {
 */
 
 void setup() {
-  
   //////////////////////////// SETTING PINS ////////////////////////////
-
+  Serial.begin(9600);
   // The servo control wire is connected to Arduino D2 pin.
   myservo.attach(servo_1_pin);
 
@@ -159,29 +184,17 @@ void setup() {
   pinMode(forward, OUTPUT); //set relay as an output
   pinMode(backward, OUTPUT); //set relay as an output
 
-  // establishing settings for stepper
-	pinMode(dirPin, OUTPUT);
-  pinMode(stepPin, OUTPUT);
-  digitalWrite(dirPin, LOW);
-
-  // pins for further range ToF sensors
-  // vl61
+  // starting the ToF sensor
   v1.begin();
 
-  // pins for the buttons
-  pinMode(first_switch, INPUT);
-  pinMode(sec_switch, INPUT);
-  digitalWrite(dirPin, HIGH);
+  // Setting time switch needs to be down to count as a press
+  but1.setDebounceTime(50);
+  but2.setDebounceTime(50);
 
-  // Setting up pins for the 
-  pinMode(first_switch, INPUT);
-  pinMode(sec_switch, INPUT);
-
-  //////////////////// SETTING EVERYTHING TO NEUTRAL POSITIONS ////////////////////
-  
-  // Set both motors to their neutral positions
-  myservo.write(90);
-  myservo1.write(0); 
+  // setting the states for the linear slide
+  stepper.setMaxSpeed(400); //SPEED = Steps / second
+  stepper.setAcceleration(800); //ACCELERATION = Steps /(second)^2
+  stepper.setSpeed(-400);
 }
 
 /*
@@ -191,62 +204,142 @@ void setup() {
 */
 
 void loop() {
+  but1.loop();
+  but2.loop();
+
   switch (state) 
   {
     case 0:
-      // needs rising edge trigger, so these three lines will cause one turn
-      digitalWrite(stepPin, LOW);
-      digitalWrite(stepPin, HIGH);
-      delayMicroseconds(60);
+      //////////////////// SETTING EVERYTHING TO NEUTRAL POSITIONS ////////////////////
+      
+      // Set both motors to their neutral positions
+      myservo.write(90);
+      myservo1.write(0); 
+      delay(500);
+      // moving the linear actuator to neutral position
+      moveLinearAct(false);
+      delay(1500);
+      stopLA();
 
-      // checks if limit switch has been pressed
-      if (digitalRead(first_switch) == HIGH) 
-      {
-        state = 1;
-        digitalWrite(dirPin, HIGH); // flips the direction of slide and switches state to 1
-      }
+      state = 1;
 
     case 1:
 
-      digitalWrite(stepPin, LOW);
-      digitalWrite(stepPin, HIGH);
-      delayMicroseconds(60);
-
-      if (digitalRead(sec_switch) == HIGH) // !!!!!! CHANGE THIS TO SECOND SWITCH AFTER YOU GET THE WIRES YOU NEED FOR IT !!!!!!! //
+      if (Serial.available() > 0) 
       {
-        state = 2;
+
+        incomingByte = Serial.read();
+
+        // if/else if block to that governs the movement of the slide.
+        if (incomingByte == 'L') 
+        {
+            if (!left) {
+              right = false;
+              stepper.setSpeed(400);
+              left = true;
+            } 
+          stepper.runSpeed();
+        } 
+        else if (incomingByte == 'R') 
+        {
+            if (!right) {
+              left = false;
+              stepper.setSpeed(-400);
+              right = true;
+            }
+          stepper.runSpeed();
+        } 
+        
+        // governs the movement of the actuator moving the ultrasound
+        if (incomingByte == 'U') 
+        {
+            down = false;
+            moveLinearAct(false);
+            up = true;
+        } 
+        else if (incomingByte == 'D') 
+        {
+            up = false;
+            moveLinearAct(true);
+            down = true;
+        } 
+
+        // if user decides to go onto the next step of scannning, we end the serial communication, save the position and up the state
+        if (incomingByte == 'C') 
+        {
+          Serial.end();
+
+          pos_end1 = stepper.currentPosition();
+
+          state = 2;
+        }
+
       }
 
-    case 2: // still need to think about how I am going to get the distance along the slide (use the vl53 or calculate the distance per signal/loop to get distance)
-      state = 3; // UPDATE THIS LATER!
-    case 3:
-      
-      myservo.write(q1);
+      break;
 
+    case 2: // still need to think about how I am going to get the distance along the slide (use the vl53 or calculate the distance per signal/loop to get distance)
+
+      if (but2.getCount() == 1) 
+      {
+        pos_end2 = stepper.currentPosition();
+        stepper.setSpeed(-1 * stepper.speed());
+        stepper.moveTo(pos_end1);
+        state = 3;
+      }
+
+      stepper.runSpeed();
+
+      break;
+    
+    case 3:
+
+      if (stepper.currentPosition() == pos_end1) 
+      {
+        stepper.moveTo(calc_turns(l1));
+        state = 4;
+      }
+
+      stepper.run();
     case 4:
 
-      if (v1.isRangeComplete()) 
-      {
-        if (v1.readRangeResult() > h_us) 
-        {
-          moveLinearAct(true);
-        }
-
-        while (v1.readRangeResult() > h_us) 
-        {
-          delay(10);
-        }
-
-        stopLA();
-
+      if (myservo.read() != q1) {
+        myservo.write(myservo.read() + 1);
+        delay(50);
+      }
+      else {
         state = 5;
       }
 
+      break;
+    
     case 5:
 
-      myservo1.write(q2);
+      if (v1.readRange() > h_us) 
+      {
+        moveLinearAct(true);
+      }
+      else 
+      {
+        stopLA();
+        state = 6;
+      }
 
-    case 6: // you need to beter define this!
+
+      break;
+    case 6:
+
+      if (myservo.read() != q1) {
+        myservo.write(myservo.read() + 1);
+        delay(50);
+      }
+      else {
+        state = 7;
+      }
+
+      break;
+    case 7: // you need to beter define this!
+
       break;
   }
 }
