@@ -11,32 +11,36 @@ import time
 class App:
     def __init__(self):
 # ----------- Create Variables to be used in UI ----------- #
-        sg.theme('black')
+        sg.theme('Reddit')
 
         self.play = True  # Is the video currently playing?
         video_path_1 = r"C:\\Users\Dylan\Dropbox\School Home Work\Dylan\\College\\Final Semester\\Capstone\\Prototyping\\tannerUS2.mp4"
         video_path_2 = r"C:\\Users\Dylan\Dropbox\School Home Work\Dylan\\College\\Final Semester\\Capstone\\Prototyping\\tannerUS22.mp4"
         self.layout_num = 1
-
+        logo = None # TODO: go back and add in the link to the logo!
         self.vid = cv2.VideoCapture(video_path_1)
 
 # ----------- Create actual layout using Columns and a row of Buttons ----------- #
+        startlayout = [
 
-        layout1 = [[sg.Text()],
+        ]
+
+        layout1 = [
+                [sg.Text(size=(5,7))],
                 [sg.Text("left/right")],
-                [sg.RealtimeButton("", button_color=('white', 'blue'), key="slide_left"), sg.RealtimeButton("", button_color=('white', 'blue'), key="slide_right")], 
+                [sg.RealtimeButton("▼", button_color=('white', 'orange'), key="slide_left", icon=sg.SYMBOL_LEFT_ARROWHEAD), sg.RealtimeButton("", button_color=('white', 'orange'), key="slide_right"), sg.Text(size=(5,0)), sg.RealtimeButton("", button_color=('white', 'orange'), key="actuator_up")], 
                 [sg.Text("up/down")],
-                [sg.RealtimeButton("", button_color=('white', 'blue'), key="actuator_up"), sg.RealtimeButton("", button_color=('white', 'blue'), key="actuator_down")],
-                [sg.Button("START", key='start')]
+                [sg.RealtimeButton("", button_color=('white', 'orange'), key="actuator_up"), sg.RealtimeButton("", button_color=('white', 'orange'), key="actuator_down")],
+                [sg.Button("START", key='start',)],
             ]   
 
         layout2 = [
-                [sg.Canvas(size=(800,300), key="canvas", background_color="black")],
+                [sg.Canvas(size=(780,300), key="canvas", background_color="white")],
                 [sg.Button("CONTINUE", key='continue')]
             ] 
 
         layout3 = [
-                [sg.Canvas(size=(800,300), key="canvas2", background_color="black")],
+                [sg.Canvas(size=(780,300), key="canvas2", background_color="white")],
             ] 
         
 
@@ -49,7 +53,7 @@ class App:
 # ----------- Create window ----------- #
 
         self.window = sg.Window('Running Timer', layout,
-                   size = (800, 600),
+                   size = (800, 480),
                    no_titlebar=False,       # TODO: GO BACK AND CHANGE THIS TO TRUE AFTER IT'S DONE!
                    auto_size_buttons=False,
                    keep_on_top=True,
