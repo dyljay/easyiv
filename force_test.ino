@@ -88,7 +88,8 @@ void loop() {
   // if it has, it will flip directions and move the same distance the other way
 
   if (stepper.distanceToGo() == 0) {
-    stepper.move(-1 * arbitrary_signals)
+    arbitrary_signals *= -1;
+    stepper.move(arbitrary_signals);
   }
 
   // you MUST call this super often, basically every time you run through this loop. this is the one that actually sends the PWM signal to the motor, so if this is not accessable and
