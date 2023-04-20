@@ -11,6 +11,8 @@ const int dirPin = 2;
 // Connect PUL+ (pulse -- PWM) on the driver to this pin
 const int stepPin = 3;
 
+// One of these pins is connected with a white wire, the other with a red. 
+
 /*
 ======================================================================================================================================
 --------------------------------------------------------------- WIRING ---------------------------------------------------------------
