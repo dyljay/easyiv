@@ -84,7 +84,8 @@ void setup() {
 }
 
 void loop() {
-  // checks if it has moved the required distance, if it has, it will flip directions and move the same distance the other way
+  // checks if it has moved the required distance
+  // if it has, it will flip directions and move the same distance the other way
 
   if (stepper.distanceToGo() == 0) {
     stepper.move(-1 * arbitrary_signals)
