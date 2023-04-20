@@ -1,6 +1,6 @@
 #include <AccelStepper.h>
 
-// don't change this! it's an initialization setting. 1 means that the arduino is interfacing with a driver (the black box)
+// don't change this! it's an initialization setting. 1 means that the motor is interfacing with the arduino through a driver (the black box)
 #define motorInterfaceType 1
 
 
