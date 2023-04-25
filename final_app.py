@@ -83,6 +83,10 @@ class App:
             [sg.Button("Exit", button_color=('white', 'firebrick4'), key='Exit3')]
         ] 
 
+        layoutfinal = [
+            sg.Text("Task Completed", auto_size_text=True)
+        ]
+
         
         
 
@@ -124,16 +128,14 @@ class App:
             if event is sg.WIN_CLOSED or event.__contains__('Exit'):
                 break
             
-            if self.passed:
-                if ser.readline().decode("utf-8") == 'T':
-                    self.window.write_event_value('VID1DONE','')
-                    
-                if self.check:
-                    if ser.readline().decode("utf-8") == 'S':
-                        self.passed = False
-                        self.swaplo()
-                        self.check = False
-                    self.window.Element('gif').UpdateAnimation(loading, time_between_frames=10)
+            if ser.readline().decode("utf-8") == 'T':
+                self.window.write_event_value('VID1DONE','')
+                
+            if self.check:
+                if ser.readline().decode("utf-8") == 'S':
+                    self.swaplo()
+                    self.check = False
+                self.window.Element('gif').UpdateAnimation(loading, time_between_frames=10)
 
             if ser.readline().decode("utf-8") == 'R':
                 self.swaplo()
@@ -158,7 +160,6 @@ class App:
                 ser.write(bytes('N', 'UTF-8'))
 
             if event == 'start':
-                self.passed = True
                 ser.timeout = 0.1
                 self.start_thread()
                 self.swaplo()
