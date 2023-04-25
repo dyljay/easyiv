@@ -74,8 +74,8 @@ int x, y, z;
 
 // setting the pins for the linear actuator
 const int en_us = 4;
-const int forward_us = 6;
-const int backward_us = 5;
+const int forward_us = 5;
+const int backward_us = 6;
 
 const int en = 9;
 const int forward = 10;
@@ -353,13 +353,12 @@ void loop() {
         if (Serial.availableForWrite() > 0) 
         {
             Serial.write(outByte);
-            delay(50);
-        }
-        
-        pos_end2 = stepper.currentPosition();
-        stepper.move(-10000);
-        stepper.setSpeed(-1600);
-        state = 4;        
+            delay(1000);
+            pos_end2 = stepper.currentPosition();
+            stepper.move(-10000);
+            stepper.setSpeed(-1600);
+            state = 4;  
+        }      
       }
 
       stepper.runSpeed();
@@ -447,7 +446,7 @@ void loop() {
           {
             startt = millis();
             stepper.move(1600);
-            stepper.setSpeed(400);
+            stepper.setSpeed(1200);
             firstpass = false;
           }
           moveLinearAct(true);
@@ -463,20 +462,21 @@ void loop() {
       {
         stepper.runSpeed();
       }
-      else 
+      else
       {
-        state = 11;
+        stepper.move(-1600);
         stepper.setSpeed(-1600);
-        stepper.move(-2000);
       }
     
       currt = millis();
       currt -= startt;
       currt /= 1000;
-
+      
       break;
 
     case 11:
+       
+    case 12:
       if (stepper.distanceToGo() != 0) 
       {
         stepper.runSpeed();
@@ -487,15 +487,6 @@ void loop() {
       }
 
       break;
-
-    case 12:
-      delay(500);
-      
-      if (Serial.availableForWrite() > 0) 
-      {
-          Serial.write(outByte3);
-          state = 9;
-      }
             
     default:
 
