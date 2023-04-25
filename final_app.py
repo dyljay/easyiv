@@ -32,6 +32,7 @@ class App:
         self.timeout = None
         self.start = 0
         self.end = 0
+        self.passed = False
 
 # ----------- Create actual layout using Columns and a row of Buttons ----------- #
         startlayout = [
@@ -67,14 +68,6 @@ class App:
             [sg.Button("Exit", button_color=('white', 'firebrick4'), key='Exit2', expand_x=True, expand_y=True)]
         ] 
 
-
-        
-        layoutpb = [
-            [sg.Text(size=(0,10))],
-            [sg.Text("Calculating...", font=('Times New Roman', 20))],
-            [sg.Image(filename=loading, key='gif')],
-        ]
-
         layoutpb = [
             [sg.Text(size=(0,3))],
             [sg.Text("Calculating...", font=('Times New Roman', 20))],
@@ -89,6 +82,8 @@ class App:
             [sg.Canvas(size=(800,450), key="canvas2", background_color="white")],
             [sg.Button("Exit", button_color=('white', 'firebrick4'), key='Exit3')]
         ] 
+
+        
         
 
 # ----------- Create Final Layout with Columns ----------- #
@@ -98,8 +93,9 @@ class App:
                     sg.Column(startlayout, key='-COL1-', element_justification='c'),
                     sg.Column(layout1, visible=False, key='-COL2-', element_justification='c'), 
                     sg.Column(layout2, visible=False, key='-COL3-', element_justification='c'),
-                    sg.Column(layoutpb, visible=False, key='-COL4-', element_justification='c'), 
-                    sg.Column(layout3, visible=False, key='-COL5-', element_justification='c')
+                    sg.Column(layoutpb, visible=False, key='-COL4-', element_justification='c'),
+                    sg.Column(layout_conf, visible=False, key='-COL5-', element_justification='c'), 
+                    sg.Column(layout3, visible=False, key='-COL6-', element_justification='c')
                 ]
             ],
         ]
@@ -123,25 +119,35 @@ class App:
     
 # ----------- Main Loop ----------- #
         while self.play:
-            event, _ = self.window.Read(timeout=self.timeout)
+            event, _ = self.window.Read(timeout=100)
 
             if event is sg.WIN_CLOSED or event.__contains__('Exit'):
                 break
+            
+            if self.passed:
+                if ser.readline().decode("utf-8") == 'T':
+                    self.window.write_event_value('VID1DONE','')
+                    
+                if self.check:
+                    if ser.readline().decode("utf-8") == 'S':
+                        self.passed = False
+                        self.swaplo()
+                        self.check = False
+                    self.window.Element('gif').UpdateAnimation(loading, time_between_frames=10)
 
-            if self.check:
-                if ser.readline() == 84:
-                    self.swaplo()
-                    self.check = False
-                    ser.close()
-                self.window.Element('gif').UpdateAnimation(loading, time_between_frames=0)
+            if ser.readline().decode("utf-8") == 'R':
+                self.swaplo()
 
             if event == 'begin':
+                ser.write(bytes('B', 'UTF-8'))
                 self.swaplo()
 
             if event == 'slide_left':
-                ser.write(bytes('L', 'UTF-8'))
+                for i in range(50):
+                    ser.write(bytes('L', 'UTF-8'))
             elif event == 'slide_right':
-                ser.write(bytes('R', 'UTF-8'))
+                for i in range(50):
+                    ser.write(bytes('R', 'UTF-8'))
             if event == 'actuator_up':
                 ser.write(bytes('U', 'UTF-8'))
                 time.sleep(0.1)
@@ -152,6 +158,8 @@ class App:
                 ser.write(bytes('N', 'UTF-8'))
 
             if event == 'start':
+                self.passed = True
+                ser.timeout = 0.1
                 self.start_thread()
                 self.swaplo()
                 ser.write(bytes('C', 'UTF-8'))
@@ -159,15 +167,12 @@ class App:
             if event == 'VID1DONE':
                 self.swaplo()
                 self.check = True
-                self.timeout = 100
             
             if event == 'continue':
+                ser.write(bytes('Z', 'UTF-8'))
                 self.timeout = None
 
                 self.vid = cv2.VideoCapture(video_path_2)
-                
-                if threading.active_count() == 1:
-                    self.start_thread()
 
                 self.canvas = self.window.Element('canvas2').TKCanvas
                 
