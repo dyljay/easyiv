@@ -13,3 +13,6 @@ The code for the UI itself
 
 ## Arduino
 The arduino code to run all the motor systems
+
+## Image Model
+The image model used to detect veins
