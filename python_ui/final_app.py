@@ -14,15 +14,14 @@ class App:
         sg.theme('Reddit')
 
         self.play = True  # Is the video currently playing?
-        video_path_1 = r"C:\\Users\Dylan\Dropbox\School Home Work\Dylan\\College\\Final Semester\\Capstone\\Prototyping\\tanner_cropped1.mp4"
-        video_path_2 = r"C:\\Users\Dylan\Dropbox\School Home Work\Dylan\\College\\Final Semester\\Capstone\\Prototyping\\tanner_cropped2.mp4"
+        video_path_1 = r".\\docs\\Capstone\\Prototyping\\tanner_cropped1.mp4"
+        video_path_2 = r".\\docs\\Capstone\\Prototyping\\tanner_cropped2.mp4"
         self.layout_num = 1
-        logo = r"C:\\Users\Dylan\Dropbox\School Home Work\Dylan\\College\\Final Semester\\Capstone\\Graphics\\easyiv.png"
-        buttonl = r"C:\\Users\Dylan\Dropbox\School Home Work\Dylan\\College\\Final Semester\\Capstone\\Prototyping\\arrow-left.gif"
-        buttonr = r"C:\\Users\Dylan\Dropbox\School Home Work\Dylan\\College\\Final Semester\\Capstone\\Prototyping\\arrow-right.gif"
-        buttonu = r"C:\\Users\Dylan\Dropbox\School Home Work\Dylan\\College\\Final Semester\\Capstone\\Prototyping\\arrow-up.gif"
-        buttond = r"C:\\Users\Dylan\Dropbox\School Home Work\Dylan\\College\\Final Semester\\Capstone\\Prototyping\\arrow-down.gif"
-        loading = r"C:\\Users\dylan\Dropbox\School Home Work\Dylan\\College\\Final Semester\\Capstone\\Prototyping\\loading_infinity.gif"
+        logo = r".\\docs\\Capstone\\Graphics\\easyiv.png"
+        buttonl = r".\\docs\\Prototyping\\arrow-left.gif"
+        buttonr = r".\\docs\\Prototyping\\arrow-right.gif"
+        buttonu = r".\\docs\\Prototyping\\arrow-up.gif"
+        buttond = r".\\docs\\Prototyping\\loading_infinity.gif"
         self.vid = cv2.VideoCapture(video_path_1)
         but_wid = 15
         but_hei = 7
